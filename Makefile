@@ -7,10 +7,12 @@ CC := $(CROSS_COMPILE)gcc
 
 # compile options
 CFLAGS += -Wall -O2
+CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 LDFLAGS += -lpthread
 
 # source files
 SRCS += lws_tool.c
+SRCS += lws_log.c
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 .PHONY:all clean

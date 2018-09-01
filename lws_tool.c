@@ -12,26 +12,7 @@
 #include <errno.h>
 #include <pthread.h>
 
-typedef enum {
-	LOG_LEVLE_SYS = 1,
-	LOG_LEVEL_ERR = 2,
-	LOG_LEVEL_WARN = 3,
-	LOG_LEVEL_INFO = 4
-} log_level_t;
-
-static int sys_log_level = 2;
-
-#define lws_log(level, ...) do { \
-				if (level <= sys_log_level) { \
-					printf("[%s][%d]", __FILE__, __LINE__); \
-					printf(__VA_ARGS__); \
-				} \
-			} while (0);
-
-static void lws_set_log_level(int level)
-{
-	sys_log_level = level;
-}
+#include "lws_log.h"
 
 int lws_accept_handler(void *arg)
 {
@@ -70,7 +51,7 @@ int lws_accept_handler(void *arg)
 			    if (EINTR == errno) {
 			        nread = 0;
 			    } else {
-			        printf("recv, %s\n", strerror(errno));
+			        lws_log(4, "recv, %s\n", strerror(errno));
 			        break;
 			    }
 			} else if (0 == nread) {
