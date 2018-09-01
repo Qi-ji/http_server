@@ -73,12 +73,10 @@ char *lws_log_level_info(int level)
  * @brief   output print information interface
  *
  * @param   level[in] debug print level
- * @param   debug_mod_idx [IN] int type,
- * @param   filename [IN] char * type,
- *          line [IN] unsigned int type,
- *          funname [IN] char * type,
- *          format [IN]  char * type
- * @return  void.
+ * @param   filename[in] debug information filename
+ * @param   line[in] debug information line
+ * @param   format[in] debug information format
+ * @return  print message size.
  */
 int lws_logger(log_level_t level, const char *filename, int line, const char *format, ...)
 {
