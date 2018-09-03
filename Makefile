@@ -13,6 +13,7 @@ LDFLAGS += -lpthread
 # source files
 SRCS += lws_tool.c
 SRCS += lws_log.c
+SRCS += lws_socket.c
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 .PHONY:all clean
