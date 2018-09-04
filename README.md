@@ -16,7 +16,7 @@ To build executable file by command-line utility:
 ```
 Usage: lws_tool [options...]
 Options:
-    -s start  local service
+    -s  start local service
     -p port  select local port, default is 8000
     -l level  set syslog level, 0-all,1-sys,2-error,3-warning,4-info
               default log level is 3-warning
