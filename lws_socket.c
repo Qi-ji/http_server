@@ -7,6 +7,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -37,6 +38,44 @@ int lws_set_socket_reuse(int sockfd)
 }
 
 /**
+ * @func    lws_set_socket_keeplive
+ * @brief   set socket keepalive attribution
+ *
+ * @param   sockfd[in] local socket fd
+ * @return  On success, return 0, On error, return error code.
+ */
+int lws_set_socket_keeplive(int socket_fd, int keep_alive, int keep_idle, int keep_interval, int keep_count)
+{
+    int retval = 0;
+
+    retval = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &keep_alive, sizeof(keep_alive));
+    if (-1 == retval) {
+        printf("set_socket_keeplive: SO_KEEPALIVE, setsockopt ERROR : %d\n", retval);
+        return retval;
+    }
+
+    retval = setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *) &keep_idle, sizeof(keep_idle));
+    if (-1 == retval) {
+        printf("set_socket_keeplive: TCP_KEEPIDLE setsockopt ERROR : %d\n", retval);
+        return retval;
+    }
+
+    retval = setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *) &keep_interval, sizeof(keep_interval));
+    if (-1 == retval) {
+        printf("set_socket_keeplive: TCP_KEEPINTVL, setsockopt ERROR : %d\n", retval);
+        return retval;
+    }
+
+    retval = setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPCNT, (void *) &keep_count, sizeof(keep_count));
+    if (-1 == retval) {
+        printf("set_socket_keeplive: TCP_KEEPINTVL,setsockopt ERROR : %d\n", retval);
+        return retval;
+    }
+
+    return 0;
+}
+
+/**
  * @func    lws_accept_handler
  * @brief   recv remote socket data
  *
@@ -55,6 +94,9 @@ int lws_accept_handler(int sockfd)
 		lws_log(2, "arg error\n");
 		return -1;
 	}
+
+    /* set clinet keepalive */
+	lws_set_socket_keeplive(sockfd, 1, 60, 20, 6);
 
 	while (1) {
 		select_timeout.tv_sec = 10;
