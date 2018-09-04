@@ -14,6 +14,8 @@ LDFLAGS += -lpthread
 SRCS += lws_tool.c
 SRCS += lws_log.c
 SRCS += lws_socket.c
+
+# object files
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 .PHONY:all clean

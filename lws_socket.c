@@ -139,6 +139,9 @@ int lws_service_start(short port)
 
 	lws_log(4, "socket success, fd: %d\n", sockfd);
 
+    /* socket attribution before start accept */
+	lws_set_socket_reuse(sockfd);
+
     /* bind local port */
 	sockaddr.sin_family = AF_INET;
 	sockaddr.sin_port = htons(port);
@@ -161,9 +164,6 @@ int lws_service_start(short port)
 	}
 
 	lws_log(4, "listen succes, start accept\n");
-
-    /* socket attribution before start accept */
-	lws_set_socket_reuse(sockfd);
 
 	while (1) {
 	    /* start accept linkage */
