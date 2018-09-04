@@ -9,9 +9,6 @@
 /* print information buflen */
 #define LWS_LOG_MAX_LEN  2048
 
-/* log file */
-#define LWS_LOG_FILE    "lws_log.txt"
-
 static log_level_t sys_log_level = LOG_LEVEL_WARN;
 
 void lws_set_log_level(log_level_t level)
@@ -91,7 +88,7 @@ int lws_logger(log_level_t level, const char *filename, int line, const char *fo
         return 0;
     }
 
-    if (level > sys_log_level && access(LWS_LOG_FILE, F_OK)) {
+    if (level > sys_log_level) {
         return 0;
     }
 
@@ -117,14 +114,6 @@ int lws_logger(log_level_t level, const char *filename, int line, const char *fo
 
     if (level <= sys_log_level) {
         printf("%s", logmsg);
-    }
-
-    if (access(LWS_LOG_FILE, F_OK) == 0) {
-        FILE *fp = fopen(LWS_LOG_FILE, "a+");
-        if (fp != NULL) {
-            fwrite(logmsg, 1, strlen(logmsg), fp);
-            fclose(fp);
-        }
     }
 
     return msglen;
