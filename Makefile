@@ -14,6 +14,7 @@ LDFLAGS += -lpthread
 SRCS += lws_tool.c
 SRCS += lws_log.c
 SRCS += lws_socket.c
+SRCS += lws_http.c
 
 # object files
 OBJS = $(patsubst %.c, %.o, $(SRCS))
