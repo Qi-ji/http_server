@@ -77,6 +77,50 @@ int lws_set_socket_keeplive(int socket_fd, int keep_alive, int keep_idle, int ke
     return 0;
 }
 
+int lws_socket_sent_handler(int sockfd, char *data, int size)
+{
+    int nleft = 0;
+    int nwritten = 0;
+    char *pwrite_buf = NULL;
+    struct timeval select_timeout;
+    fd_set rset;
+
+    if ((sockfd <= 0) || (NULL == data) || (size < 0)) {
+        printf("writen: param err.\n");
+        return -1;
+    }
+
+    pwrite_buf = (char *)data;
+    nleft = size;
+
+    while(nleft > 0) {
+        select_timeout.tv_sec = 10;
+        select_timeout.tv_usec = 0;
+
+        FD_ZERO(&rset);
+        FD_SET((unsigned int)sockfd, &rset);
+        if (select(sockfd + 1, NULL, &rset, NULL, &select_timeout) <= 0) {    
+            printf("writen: select failed, %s\n", strerror(errno));
+            return -1;
+        }
+
+        if (-1 == (nwritten = send(sockfd, pwrite_buf, nleft, 0))) {
+            if (EINTR == errno) {
+                printf("EINTR\n");
+                nwritten = 0;
+            } else {
+                printf("Send() error, 0x%x\n", errno);
+                return -1;
+            }
+        }
+
+        nleft -= nwritten;
+        pwrite_buf += nwritten;
+    }
+
+    return size;
+}
+
 /**
  * @func    lws_accept_handler
  * @brief   recv remote socket data
@@ -84,7 +128,7 @@ int lws_set_socket_keeplive(int socket_fd, int keep_alive, int keep_idle, int ke
  * @param   sockfd[in] local socket fd
  * @return  On success, return 0, On error, return error code.
  */
-int lws_accept_handler(int sockfd)
+int lws_socket_recv_handler(int sockfd)
 {
     lws_http_conn_t *lws_http_conn;
 	int nread = 0;
@@ -107,7 +151,11 @@ int lws_accept_handler(int sockfd)
 	    return -1;
 	}
 
-	while (1) {
+    /* set socket callback */
+	lws_http_conn->send = lws_socket_sent_handler;
+	lws_http_conn->close_flag = 0;
+
+	while (lws_http_conn->close_flag == 0) {
 		select_timeout.tv_sec = 10;
 		select_timeout.tv_usec = 0;
 
@@ -138,13 +186,12 @@ int lws_accept_handler(int sockfd)
 			} else {
 				lws_log(4, "recv: %s\n", pread_buf);
 				lws_http_conn_recv(lws_http_conn, pread_buf, nread);
-				break;
 			}
 		}
 	}
 
 	lws_http_conn_exit(lws_http_conn);
-	close(sockfd);
+	lws_log(3, "exit http connect sockfd: %d\n", sockfd);
 	return 0;
 }
 
@@ -158,12 +205,13 @@ static void *lws_accept_thread(void *arg)
         return NULL;
     }
 
-    ret = lws_accept_handler(sockfd);
+    lws_log(3, "start http recv sockfd: %d\n", sockfd);
+    ret = lws_socket_recv_handler(sockfd);
     if (ret) {
         lws_log(2, "accept handler failed, ret: %d\n", ret);
-        return NULL;
     }
 
+    close(sockfd);
     return NULL;
 }
 

@@ -15,6 +15,7 @@ SRCS += lws_tool.c
 SRCS += lws_log.c
 SRCS += lws_socket.c
 SRCS += lws_http.c
+SRCS += lws_http_plugin.c 
 
 # object files
 OBJS = $(patsubst %.c, %.o, $(SRCS))

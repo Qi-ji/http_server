@@ -6,6 +6,21 @@
 
 #include "lws_log.h"
 #include "lws_http.h"
+#include "lws_http_plugin.h"
+
+typedef void (*lws_event_handler_t)(lws_http_conn_t *c, int ev, void *p);
+
+typedef struct lws_http_plugins_t {
+    const char *endpoint;
+    lws_event_handler_t handler;
+} lws_http_plugins_t;
+
+lws_http_plugins_t lws_http_plugins[] = {
+    {"/",           lws_default_handler},
+    {"/hello",      lws_hello_handler},
+
+    {NULL,          NULL}
+};
 
 const char *lws_skip(const char *s, const char *end, const char *delims, struct lws_str *v)
 {
@@ -136,6 +151,19 @@ int lws_parse_http(const char *s, int n, struct http_message *hm, int is_req)
     return len;
 }
 
+struct lws_str *lws_get_http_header(struct http_message *hm, const char *name)
+{
+    size_t i, len = strlen(name);
+
+    for (i = 0; hm->header_names[i].len > 0; i++) {
+        struct lws_str *h = &hm->header_names[i], *v = &hm->header_values[i];
+        if (h->p != NULL && h->len == len && !strncasecmp(h->p, name, len))
+            return v;
+    }
+
+    return NULL;
+}
+
 lws_http_conn_t *lws_http_conn_init(int sockfd)
 {
     lws_http_conn_t *lws_http_conn;
@@ -145,7 +173,7 @@ lws_http_conn_t *lws_http_conn_init(int sockfd)
         return NULL;
 
     lws_http_conn->sockfd = sockfd;
-    memset(&lws_http_conn->hm, 0, sizeof(struct http_message));
+    lws_http_conn->send = NULL;
     return lws_http_conn;
 }
 
@@ -159,7 +187,8 @@ int lws_http_conn_exit(lws_http_conn_t *lws_http_conn)
 
 int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
 {
-    struct http_message *hm;
+    struct http_message http_msg, *hm;
+    lws_http_plugins_t *plugin;
     int len = 0;
     int i;
 
@@ -167,13 +196,13 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
         return -1;
 
     lws_log(4, "start lws_parse_http size: %d\n", size);
-    len = lws_parse_http(data, size, &lws_http_conn->hm, 1);
+    len = lws_parse_http(data, size, &http_msg, 1);
     if (len < 0) {
         lws_log(2, "lws_parse_http failed, len: %d\n", len);
         return -1;
     }
 
-    hm = &lws_http_conn->hm;
+    hm = &http_msg;
     lws_log(4, "lws_parse_http len: %d\n", len);
     lws_log(4, "http request: %.*s %.*s %.*s\n", hm->method.len, hm->method.p,
                 hm->uri.len, hm->uri.p, hm->proto.len, hm->proto.p);
@@ -184,6 +213,22 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
         }
     }
 
-    return 0;
+    /* see plugin table */
+    plugin = lws_http_plugins;
+    while (plugin && plugin->endpoint) {
+        if (strncmp(plugin->endpoint, hm->uri.p, hm->uri.len) == 0) {
+            plugin->handler(lws_http_conn, LWS_EV_HTTP_REQUEST, (void *)&http_msg);
+            break;
+        }
+
+        plugin++;
+    }
+
+    if (plugin == NULL || plugin->endpoint == NULL) {
+        lws_log(2, "404 NOT FOUND\n");
+        lws_notfound_handler(lws_http_conn, LWS_EV_HTTP_REQUEST, NULL);
+    }
+
+    return len;
 }
 

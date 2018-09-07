@@ -9,6 +9,12 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #endif
 
+/* HTTP and websocket events. void *ev_data is described in a comment. */
+#define LWS_EV_HTTP_REQUEST     100 /* struct http_message * */
+#define LWS_EV_HTTP_REPLY       101   /* struct http_message * */
+#define LWS_EV_HTTP_CHUNK       102   /* struct http_message * */
+#define LWS_EV_SSI_CALL         105     /* char * */
+
 /* Describes chunk of memory */
 struct lws_str {
   const char *p; /* Memory chunk pointer */
@@ -48,12 +54,17 @@ struct http_message {
 
 typedef struct _lws_http_conn_t_ {
     int sockfd;
-    struct http_message hm;
+    int close_flag;
+    int (*send)(int sockfd, char *data, int size);
 } lws_http_conn_t;
 
+/* http connection */
 extern lws_http_conn_t *lws_http_conn_init(int sockfd);
 extern int lws_http_conn_exit(lws_http_conn_t *lws_http_conn);
 extern int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size);
+
+/* http message */
+extern struct lws_str *lws_get_http_header(struct http_message *hm, const char *name);
 
 #endif // _LWS_HTTP_H_
 
