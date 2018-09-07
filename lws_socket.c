@@ -14,6 +14,8 @@
 #include <pthread.h>
 
 #include "lws_log.h"
+#include "lws_socket.h"
+#include "lws_http.h"
 
 /**
  * @func    lws_set_socket_reuse
@@ -84,6 +86,7 @@ int lws_set_socket_keeplive(int socket_fd, int keep_alive, int keep_idle, int ke
  */
 int lws_accept_handler(int sockfd)
 {
+    lws_http_conn_t *lws_http_conn;
 	int nread = 0;
 	fd_set rset;
 	char pread_buf[4096];
@@ -97,6 +100,12 @@ int lws_accept_handler(int sockfd)
 
     /* set clinet keepalive */
 	lws_set_socket_keeplive(sockfd, 1, 60, 20, 6);
+
+	lws_http_conn = lws_http_conn_init(sockfd);
+	if (lws_http_conn == NULL) {
+	    lws_log(2, "lws_http_conn_init failed\n");
+	    return -1;
+	}
 
 	while (1) {
 		select_timeout.tv_sec = 10;
@@ -128,11 +137,13 @@ int lws_accept_handler(int sockfd)
 			    break;
 			} else {
 				lws_log(4, "recv: %s\n", pread_buf);
+				lws_http_conn_recv(lws_http_conn, pread_buf, nread);
 				break;
 			}
 		}
 	}
 
+	lws_http_conn_exit(lws_http_conn);
 	close(sockfd);
 	return 0;
 }
