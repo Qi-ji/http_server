@@ -232,6 +232,19 @@ struct lws_str *lws_get_http_header(struct http_message *hm, const char *name)
     return NULL;
 }
 
+char *lws_get_http_status(int http_code)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(lws_http_status); i++) {
+        if (http_code == lws_http_status[i].http_code) {
+            return lws_http_status[i].http_status;
+        }
+    }
+
+    return "unknow";
+}
+
 lws_http_conn_t *lws_http_conn_init(int sockfd)
 {
     lws_http_conn_t *lws_http_conn;
