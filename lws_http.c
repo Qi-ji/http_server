@@ -232,7 +232,7 @@ struct lws_str *lws_get_http_header(struct http_message *hm, const char *name)
     return NULL;
 }
 
-char *lws_get_http_status(int http_code)
+static char *lws_get_http_status(int http_code)
 {
     int i;
 
@@ -243,6 +243,68 @@ char *lws_get_http_status(int http_code)
     }
 
     return "unknow";
+}
+
+int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *content_type, 
+                          char *extra_headers, int keepalive, char *content, int content_length)
+{
+    int header_length = lws_http_conn->send_length;
+    char *send_buf = lws_http_conn->send_buf;
+    int send_length = 0;
+
+    if (lws_http_conn->send == NULL)
+        return -1;
+
+    /* HTTP/1.1 */
+    header_length += sprintf(send_buf + header_length, "%s %d %s\r\n", LWS_HTTP_PROTO, http_code, lws_get_http_status(http_code));
+
+    if (content_length < 0) {
+        header_length += sprintf(send_buf + header_length, "%s", "Transfer-Encoding: chunked\r\n");
+    } else {
+        header_length += sprintf(send_buf + header_length, "Content-Length: %d\r\n", content_length);
+    }
+
+    if (content_type) {
+        header_length += sprintf(send_buf + header_length, "Content-Type: %s\r\n", content_type);
+    }
+
+    if (extra_headers) {
+        header_length += sprintf(send_buf + header_length, "%s\r\n", extra_headers);
+    }
+
+    if (keepalive) {
+        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "KeepAlive");
+    } else {
+        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "Close");
+    }
+
+    /* "\r\n\r\n" */
+    header_length += sprintf(send_buf + header_length, "%s", "\r\n\r\n");
+    lws_http_conn->send_length = header_length;
+
+    /* send header */
+    lws_log(4, "Send: %.*s\n", lws_http_conn->send_length, lws_http_conn->send_buf);
+    send_length += lws_http_conn->send(lws_http_conn->sockfd, lws_http_conn->send_buf, lws_http_conn->send_length);
+    if (send_length < 0)
+        return -1;
+
+    if (content && content_length > 0) {
+        lws_log(4, "Send body_size: %d\n", content_length);
+        send_length += lws_http_conn->send(lws_http_conn->sockfd, content, content_length);
+    }
+
+    return send_length;
+}
+
+int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code, 
+                     char *content_type, char *content, int content_length)
+{
+    return lws_http_respond_base(lws_http_conn, http_code, content_type, NULL, 0, content, content_length);
+}
+
+int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code)
+{
+    return lws_http_respond_base(lws_http_conn, http_code, LWS_HTTP_HTML_TYPE, NULL, 0, NULL, 0);
 }
 
 lws_http_conn_t *lws_http_conn_init(int sockfd)
