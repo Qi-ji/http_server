@@ -6,12 +6,6 @@
 #include "lws_http.h"
 #include "lws_http_plugin.h"
 
-void lws_notfound_handler(lws_http_conn_t *c, int ev, void *p)
-{
-    lws_http_respond_header(c, 404);
-    c->close_flag = 1;
-}
-
 void lws_default_handler(lws_http_conn_t *c, int ev, void *p)
 {
     struct http_message *hm = p;
