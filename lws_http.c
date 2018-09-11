@@ -386,6 +386,8 @@ lws_http_conn_t *lws_http_conn_init(int sockfd)
 
     lws_http_conn->sockfd = sockfd;
     lws_http_conn->send = NULL;
+    lws_http_conn->send_length = 0;
+    lws_http_conn->recv_length = 0;
     return lws_http_conn;
 }
 
