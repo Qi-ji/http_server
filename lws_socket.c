@@ -227,7 +227,7 @@ int lws_service_init(void)
 {
     /* http endpoint */
     lws_http_endpoint_register("/", 1, lws_default_handler);
-    lws_http_endpoint_register("/hello", 6, lws_default_handler);
+    lws_http_endpoint_register("/hello", 6, lws_hello_handler);
     lws_http_endpoint_register("/version", 8, lws_version_handler);
 
     return 0;
