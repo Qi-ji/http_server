@@ -270,7 +270,7 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
     }
 
     /* "\r\n\r\n" */
-    header_length += sprintf(send_buf + header_length, "%s", "\r\n\r\n");
+    header_length += sprintf(send_buf + header_length, "%s", "\r\n");
     lws_http_conn->send_length = header_length;
 
     /* send header */
@@ -313,7 +313,8 @@ lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size)
 
     plugin = &lws_http_plugins;
     while (plugin && plugin->uri) {
-        if (strncmp(plugin->uri, uri, uri_size) == 0) {
+        if (uri_size == plugin->uri_size &&
+            strncmp(plugin->uri, uri, uri_size) == 0) {
             hander = plugin->handler;
             break;
         }
