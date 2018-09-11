@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
     int service = 0;
     log_level_t log_level = LOG_LEVEL_WARN;
     char ch;
+    int ret;
 
     if (argc < 2) {
         lws_log(3, "argc: %d\n", argc);
@@ -70,6 +71,12 @@ int main(int argc, char *argv[])
 
     /* start lws service */
     if (service) {
+        ret = lws_service_init();
+        if (ret) {
+            lws_log(2, "init lws service failed\n");
+            return -1;
+        }
+
         lws_log(3, "start lws service, port: %d\n", port);
         lws_service_start(port);
     }

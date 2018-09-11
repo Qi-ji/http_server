@@ -16,6 +16,7 @@
 #include "lws_log.h"
 #include "lws_socket.h"
 #include "lws_http.h"
+#include "lws_http_plugin.h"
 
 /**
  * @func    lws_set_socket_reuse
@@ -213,6 +214,22 @@ static void *lws_accept_thread(void *arg)
 
     close(sockfd);
     return NULL;
+}
+
+/**
+ * @func    lws_service_init
+ * @brief   init module resource
+ *
+ * @param   void
+ * @return  On success, return 0, On error, return error code.
+ */
+int lws_service_init(void)
+{
+    /* http endpoint */
+    lws_http_endpoint_register("/", 1, lws_default_handler);
+    lws_http_endpoint_register("/hello", 6, lws_default_handler);
+
+    return 0;
 }
 
 /**

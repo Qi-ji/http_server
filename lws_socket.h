@@ -37,5 +37,14 @@ extern int lws_accept_handler(int sockfd);
  */
 extern int lws_service_start(short port);
 
+/**
+ * @func    lws_service_init
+ * @brief   init module resource
+ *
+ * @param   void
+ * @return  On success, return 0, On error, return error code.
+ */
+extern int lws_service_init(void);
+
 #endif // _LWS_SOCKET_H_
 
