@@ -6,7 +6,6 @@
 
 #include "lws_log.h"
 #include "lws_http.h"
-#include "lws_http_plugin.h"
 
 typedef struct _lws_http_status_t {
     int http_code;
@@ -74,20 +73,6 @@ static lws_http_status_t lws_http_status[] = {
     {508,    "LoopDetected"},
     {510,    "NotExtended"},
     {511,    "NetworkAuthenticationRequired"},
-};
-
-typedef void (*lws_event_handler_t)(lws_http_conn_t *c, int ev, void *p);
-
-typedef struct lws_http_plugins_t {
-    const char *endpoint;
-    lws_event_handler_t handler;
-} lws_http_plugins_t;
-
-lws_http_plugins_t lws_http_plugins[] = {
-    {"/",           lws_default_handler},
-    {"/hello",      lws_hello_handler},
-
-    {NULL,          NULL}
 };
 
 const char *lws_skip(const char *s, const char *end, const char *delims, struct lws_str *v)
@@ -219,6 +204,9 @@ int lws_parse_http(const char *s, int n, struct http_message *hm, int is_req)
     return len;
 }
 
+/**
+ * http protocol interfaces
+**/
 struct lws_str *lws_get_http_header(struct http_message *hm, const char *name)
 {
     size_t i, len = strlen(name);
@@ -245,6 +233,9 @@ static char *lws_get_http_status(int http_code)
     return "unknow";
 }
 
+/**
+ * http response interfaces
+**/
 int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *content_type, 
                           char *extra_headers, int keepalive, char *content, int content_length)
 {
@@ -273,9 +264,9 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
     }
 
     if (keepalive) {
-        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "KeepAlive");
+        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "keep-alive");
     } else {
-        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "Close");
+        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "close");
     }
 
     /* "\r\n\r\n" */
@@ -307,6 +298,83 @@ int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code)
     return lws_http_respond_base(lws_http_conn, http_code, LWS_HTTP_HTML_TYPE, NULL, 0, NULL, 0);
 }
 
+/**
+ * http plugin interfaces
+**/
+static lws_http_plugins_t lws_http_plugins = {NULL, NULL, 0, NULL};
+
+lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size)
+{
+    lws_http_plugins_t *plugin;
+    lws_event_handler_t hander = NULL;
+
+    if (uri == NULL || uri_size <= 0)
+        return NULL;
+
+    plugin = &lws_http_plugins;
+    while (plugin && plugin->uri) {
+        if (strncmp(plugin->uri, uri, uri_size) == 0) {
+            hander = plugin->handler;
+            break;
+        }
+
+        plugin = plugin->next;
+    }
+
+    return hander;
+}
+
+void lws_http_endpoint_register(const char *uri, int uri_size, lws_event_handler_t handler)
+{
+    lws_http_plugins_t *plugin;
+    lws_http_plugins_t *new_plugin;
+
+    if (uri == NULL || uri_size <= 0 || handler == NULL)
+        return ;
+
+    plugin = &lws_http_plugins;
+    while (plugin) {
+        if (plugin->handler == NULL) {
+            new_plugin = plugin;
+            break;
+        }
+
+        if (plugin->next == NULL) {
+            new_plugin = malloc(sizeof(lws_http_plugins_t));
+            plugin->next = new_plugin;
+            break;
+        }
+
+        plugin = plugin->next;
+    }
+
+    /* insert list */
+    if (new_plugin) {
+        new_plugin->handler = handler;
+        new_plugin->uri_size = uri_size;
+        new_plugin->uri = strndup(uri, uri_size);
+        new_plugin->next = NULL;
+        lws_log(3, "register endpoint: %.*s\n", uri_size, uri);
+    }
+}
+
+/**
+ * http connection interfaces
+**/
+void lws_http_conn_print(struct http_message *hm)
+{
+    int i;
+
+    lws_log(4, "http request: %.*s %.*s %.*s\n", hm->method.len, hm->method.p,
+                hm->uri.len, hm->uri.p, hm->proto.len, hm->proto.p);
+    for (i = 0; i < LWS_MAX_HTTP_HEADERS; i++) {
+        if (hm->header_names[i].len > 0 && hm->header_values[i].len > 0) {
+            lws_log(4, "http header: %.*s: %.*s\n", hm->header_names[i].len, hm->header_names[i].p, 
+                        hm->header_values[i].len, hm->header_values[i].p);
+        }
+    }
+}
+
 lws_http_conn_t *lws_http_conn_init(int sockfd)
 {
     lws_http_conn_t *lws_http_conn;
@@ -330,10 +398,9 @@ int lws_http_conn_exit(lws_http_conn_t *lws_http_conn)
 
 int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
 {
-    struct http_message http_msg, *hm;
-    lws_http_plugins_t *plugin;
+    struct http_message http_msg;
+    lws_event_handler_t handler;
     int len = 0;
-    int i;
 
     if (lws_http_conn == NULL)
         return -1;
@@ -345,31 +412,17 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
         return -1;
     }
 
-    hm = &http_msg;
+    /* print http data */
     lws_log(4, "lws_parse_http len: %d\n", len);
-    lws_log(4, "http request: %.*s %.*s %.*s\n", hm->method.len, hm->method.p,
-                hm->uri.len, hm->uri.p, hm->proto.len, hm->proto.p);
-    for (i = 0; i < LWS_MAX_HTTP_HEADERS; i++) {
-        if (hm->header_names[i].len > 0 && hm->header_values[i].len > 0) {
-            lws_log(4, "http header: %.*s: %.*s\n", hm->header_names[i].len, hm->header_names[i].p, 
-                        hm->header_values[i].len, hm->header_values[i].p);
-        }
-    }
+    lws_http_conn_print(&http_msg);
 
-    /* see plugin table */
-    plugin = lws_http_plugins;
-    while (plugin && plugin->endpoint) {
-        if (strncmp(plugin->endpoint, hm->uri.p, hm->uri.len) == 0) {
-            plugin->handler(lws_http_conn, LWS_EV_HTTP_REQUEST, (void *)&http_msg);
-            break;
-        }
-
-        plugin++;
-    }
-
-    if (plugin == NULL || plugin->endpoint == NULL) {
-        lws_log(2, "404 NOT FOUND\n");
-        lws_notfound_handler(lws_http_conn, LWS_EV_HTTP_REQUEST, NULL);
+    handler = lws_http_get_endpoint_hander(http_msg.uri.p, http_msg.uri.len);
+    if (handler) {
+        handler(lws_http_conn, LWS_EV_HTTP_REQUEST, (void *)&http_msg);
+    } else {
+        lws_log(2, "Not found uri: %.*s\n", http_msg.uri.len, http_msg.uri.p);
+        lws_http_respond_header(lws_http_conn, 404);
+        lws_http_conn->close_flag = 1;
     }
 
     return len;

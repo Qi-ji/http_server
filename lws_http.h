@@ -23,7 +23,6 @@
 #define LWS_HTTP_MPEG_TYPE      "video/mpeg"
 #define LWS_HTTP_MP4_TYPE       "video/mp4"
 
-
 /* HTTP and websocket events. void *ev_data is described in a comment. */
 #define LWS_EV_HTTP_REQUEST     100 /* struct http_message * */
 #define LWS_EV_HTTP_REPLY       101   /* struct http_message * */
@@ -67,6 +66,9 @@ struct http_message {
   struct lws_str body; /* Zero-length for requests with no body */
 };
 
+/**
+ * http connection interfaces
+**/
 typedef struct _lws_http_conn_t_ {
     int sockfd;
     int close_flag;
@@ -79,20 +81,38 @@ typedef struct _lws_http_conn_t_ {
     int (*close)(int sockfd);
 } lws_http_conn_t;
 
-/* http connection */
 extern lws_http_conn_t *lws_http_conn_init(int sockfd);
 extern int lws_http_conn_exit(lws_http_conn_t *lws_http_conn);
 extern int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size);
 
-/* http message */
+/**
+ * http protocol interfaces
+**/
 extern struct lws_str *lws_get_http_header(struct http_message *hm, const char *name);
 
-/* http response */
+/**
+ * http response interfaces
+**/
 extern int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *content_type, 
                           char *extra_headers, int keepalive, char *content, int content_length);
 extern int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code,
                      char *content_type, char *content, int content_length);
 extern int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code);
+
+/**
+ * http plugin interfaces
+**/
+typedef void (*lws_event_handler_t)(lws_http_conn_t *c, int ev, void *p);
+
+typedef struct lws_http_plugins_t {
+    struct lws_http_plugins_t *next;
+    const char *uri;
+    size_t uri_size;
+    lws_event_handler_t handler;
+} lws_http_plugins_t;
+
+extern lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size);
+extern void lws_http_endpoint_register(const char *uri, int uri_size, lws_event_handler_t handler);
 
 #endif // _LWS_HTTP_H_
 
