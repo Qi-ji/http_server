@@ -248,6 +248,7 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
 
     /* HTTP/1.1 */
     header_length += sprintf(send_buf + header_length, "%s %d %s\r\n", LWS_HTTP_PROTO, http_code, lws_get_http_status(http_code));
+    header_length += sprintf(send_buf + header_length, "Host: %s %s\r\n", LWS_HTTP_HOST, LWS_HTTP_VERSION);
 
     if (content_length < 0) {
         header_length += sprintf(send_buf + header_length, "%s", "Transfer-Encoding: chunked\r\n");
