@@ -10,6 +10,8 @@
 #endif
 
 #define LWS_HTTP_PROTO          "HTTP/1.1"
+#define LWS_HTTP_HOST           "LWS"
+#define LWS_HTTP_VERSION        "1.0.0"
 
 /* Content-Type */
 #define LWS_HTTP_HTML_TYPE      "text/html"

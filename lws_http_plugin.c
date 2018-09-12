@@ -61,9 +61,8 @@ void lws_version_handler(lws_http_conn_t *c, int ev, void *p)
             return ;
         }
 
-        sprintf(data, "%s",
-                  "<html><body><h>LWS - version[1.0.0]</h><br/><br/>"
-                  "</body></html>");
+        sprintf(data, "<html><body><h>LWS - version[%s]</h><br/><br/>"
+                  "</body></html>", LWS_HTTP_VERSION);
 
         lws_http_respond(c, 200, LWS_HTTP_HTML_TYPE, data, strlen(data));
         c->close_flag = 1;
