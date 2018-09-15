@@ -167,7 +167,7 @@ int lws_socket_recv_handler(int sockfd)
 			lws_log(2, "select failed, fd: %d, err: %s\n", sockfd, strerror(errno));
 			break;
 		} else if (ret == 0) {
-			lws_log(4, "select timeout\n");
+			lws_log(4, "sockfd[%d] select timeout\n", sockfd);
 			continue;
 		}
 
