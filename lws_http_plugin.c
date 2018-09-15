@@ -13,7 +13,6 @@ void lws_default_handler(lws_http_conn_t *c, int ev, void *p)
 
     if (hm && ev == LWS_EV_HTTP_REQUEST) {
         if (c->send == NULL) {
-            c->close_flag = 1;
             return ;
         }
 
@@ -25,8 +24,7 @@ void lws_default_handler(lws_http_conn_t *c, int ev, void *p)
                   "</ul>"
                   "</body></html>");
 
-        lws_http_respond(c, 200, LWS_HTTP_HTML_TYPE, data, strlen(data));
-        c->close_flag = 1;
+        lws_http_respond(c, 200, c->close_flag, LWS_HTTP_HTML_TYPE, data, strlen(data));
     }
 }
 
@@ -37,7 +35,6 @@ void lws_hello_handler(lws_http_conn_t *c, int ev, void *p)
 
     if (hm && ev == LWS_EV_HTTP_REQUEST) {
         if (c->send == NULL) {
-            c->close_flag = 1;
             return ;
         }
 
@@ -45,8 +42,7 @@ void lws_hello_handler(lws_http_conn_t *c, int ev, void *p)
                   "<html><body><h>Hello LWS!</h><br/><br/>"
                   "</body></html>");
 
-        lws_http_respond(c, 200, LWS_HTTP_HTML_TYPE, data, strlen(data));
-        c->close_flag = 1;
+        lws_http_respond(c, 200, c->close_flag, LWS_HTTP_HTML_TYPE, data, strlen(data));
     }
 }
 
@@ -57,15 +53,13 @@ void lws_version_handler(lws_http_conn_t *c, int ev, void *p)
 
     if (hm && ev == LWS_EV_HTTP_REQUEST) {
         if (c->send == NULL) {
-            c->close_flag = 1;
             return ;
         }
 
         sprintf(data, "<html><body><h>LWS - version[%s]</h><br/><br/>"
                   "</body></html>", LWS_HTTP_VERSION);
 
-        lws_http_respond(c, 200, LWS_HTTP_HTML_TYPE, data, strlen(data));
-        c->close_flag = 1;
+        lws_http_respond(c, 200, c->close_flag, LWS_HTTP_HTML_TYPE, data, strlen(data));
     }
 }
 

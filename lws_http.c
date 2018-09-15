@@ -237,7 +237,7 @@ static char *lws_get_http_status(int http_code)
  * http response interfaces
 **/
 int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *content_type, 
-                          char *extra_headers, int keepalive, char *content, int content_length)
+                          char *extra_headers, int close_flag, char *content, int content_length)
 {
     int header_length = lws_http_conn->send_length;
     char *send_buf = lws_http_conn->send_buf;
@@ -264,10 +264,10 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
         header_length += sprintf(send_buf + header_length, "%s\r\n", extra_headers);
     }
 
-    if (keepalive) {
-        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "keep-alive");
-    } else {
+    if (close_flag) {
         header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "close");
+    } else {
+        header_length += sprintf(send_buf + header_length, "Connection: %s\r\n", "keep-alive");
     }
 
     /* "\r\n\r\n" */
@@ -277,8 +277,11 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
     /* send header */
     lws_log(4, "Send: %.*s\n", lws_http_conn->send_length, lws_http_conn->send_buf);
     send_length += lws_http_conn->send(lws_http_conn->sockfd, lws_http_conn->send_buf, lws_http_conn->send_length);
-    if (send_length < 0)
+    if (send_length <= 0) {
         return -1;
+    } else {
+        lws_http_conn->send_length = 0;
+    }
 
     if (content && content_length > 0) {
         lws_log(4, "Send body_size: %d\n", content_length);
@@ -288,15 +291,15 @@ int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *c
     return send_length;
 }
 
-int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code, 
+int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code, int close_flag, 
                      char *content_type, char *content, int content_length)
 {
-    return lws_http_respond_base(lws_http_conn, http_code, content_type, NULL, 0, content, content_length);
+    return lws_http_respond_base(lws_http_conn, http_code, content_type, NULL, close_flag, content, content_length);
 }
 
-int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code)
+int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code, int close_flag)
 {
-    return lws_http_respond_base(lws_http_conn, http_code, LWS_HTTP_HTML_TYPE, NULL, 0, NULL, 0);
+    return lws_http_respond_base(lws_http_conn, http_code, LWS_HTTP_HTML_TYPE, NULL, close_flag, NULL, 0);
 }
 
 /**
@@ -404,6 +407,7 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
 {
     struct http_message http_msg;
     lws_event_handler_t handler;
+    struct lws_str *connect;
     int len = 0;
 
     if (lws_http_conn == NULL)
@@ -420,13 +424,18 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
     lws_log(4, "lws_parse_http len: %d\n", len);
     lws_http_conn_print(&http_msg);
 
+    /* parse Connection */
+    connect = lws_get_http_header(&http_msg, "Connection");
+    if (strncasecmp(connect->p, "close", connect->len) == 0) {
+        lws_http_conn->close_flag = 1;
+    }
+
     handler = lws_http_get_endpoint_hander(http_msg.uri.p, http_msg.uri.len);
     if (handler) {
         handler(lws_http_conn, LWS_EV_HTTP_REQUEST, (void *)&http_msg);
     } else {
         lws_log(2, "Not found uri: %.*s\n", http_msg.uri.len, http_msg.uri.p);
-        lws_http_respond_header(lws_http_conn, 404);
-        lws_http_conn->close_flag = 1;
+        lws_http_respond_header(lws_http_conn, 404, lws_http_conn->close_flag);
     }
 
     return len;

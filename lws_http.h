@@ -96,10 +96,10 @@ extern struct lws_str *lws_get_http_header(struct http_message *hm, const char *
  * http response interfaces
 **/
 extern int lws_http_respond_base(lws_http_conn_t *lws_http_conn, int http_code, char *content_type, 
-                          char *extra_headers, int keepalive, char *content, int content_length);
-extern int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code,
+                          char *extra_headers, int close_flag, char *content, int content_length);
+extern int lws_http_respond(lws_http_conn_t *lws_http_conn, int http_code, int close_flag, 
                      char *content_type, char *content, int content_length);
-extern int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code);
+extern int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code, int close_flag);
 
 /**
  * http plugin interfaces
