@@ -78,6 +78,44 @@ int lws_set_socket_keeplive(int socket_fd, int keep_alive, int keep_idle, int ke
     return 0;
 }
 
+int lws_socket_set_recvbuf_size(int sockfd, int size)
+{
+    int ret;
+
+    if (size < (512 * 1024)) {
+        size = 512 * 1024;
+    } else if (size > (4 * 1024 *1024)) {
+        size = 4 * 1024 *1024;
+    }
+
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
+    if (ret) {
+        lws_log(2, "setsockopt failed, ret: %d\n", ret);
+        return -1;
+    }
+
+    return -1;
+}
+
+int lws_socket_set_sendbuf_size(int sockfd, int size)
+{
+    int ret;
+
+    if (size < (512 * 1024)) {
+        size = 512 * 1024;
+    } else if (size > (4 * 1024 *1024)) {
+        size = 4 * 1024 *1024;
+    }
+
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    if (ret) {
+        lws_log(2, "setsockopt failed, ret: %d\n", ret);
+        return -1;
+    }
+
+    return -1;
+}
+
 int lws_socket_sent_handler(int sockfd, char *data, int size)
 {
     int nleft = 0;
@@ -145,6 +183,8 @@ int lws_socket_recv_handler(int sockfd)
 
     /* set clinet keepalive */
 	lws_set_socket_keeplive(sockfd, 1, 60, 20, 6);
+    lws_socket_set_recvbuf_size(sockfd, 2 * 1024 * 1024);
+    lws_socket_set_sendbuf_size(sockfd, 2 * 1024 * 1024);
 
 	lws_http_conn = lws_http_conn_init(sockfd);
 	if (lws_http_conn == NULL) {
