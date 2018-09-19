@@ -19,6 +19,7 @@
 #define LWS_HTTP_XML_TYPE       "application/xml"
 #define LWS_HTTP_JSON_TYPE      "application/json"
 #define LWS_HTTP_PDF_TYPE       "application/pdf"
+#define LWS_HTTP_OCTET_STREAM   "application/octet-stream"
 #define LWS_HTTP_JPEG_TYPE      "image/jpeg"
 #define LWS_HTTP_BMP_TYPE       "image/bmp"
 #define LWS_HTTP_PNG_TYPE       "image/png"

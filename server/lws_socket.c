@@ -271,7 +271,8 @@ int lws_service_init(void)
     lws_http_endpoint_register("/version", 8, lws_version_handler);
 
     /* load file */
-    lws_http_endpoint_register("/show.jpg", 9, lws_download_handler);
+    lws_http_endpoint_register("/show.jpg", 9, lws_show_handler);
+    lws_http_endpoint_register("/binary.tgz", 11, lws_binary_handler);
 
     return 0;
 }
