@@ -8,14 +8,16 @@ CC := $(CROSS_COMPILE)gcc
 # compile options
 CFLAGS += -Wall -O2
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
+CFLAGS += -Itool -Ihttp -Iserver
 LDFLAGS += -lpthread
 
 # source files
-SRCS += lws_tool.c
-SRCS += lws_log.c
-SRCS += lws_socket.c
-SRCS += lws_http.c
-SRCS += lws_http_plugin.c 
+SRCS += tool/lws_util.c
+SRCS += tool/lws_log.c
+SRCS += http/lws_http.c
+SRCS += http/lws_http_plugin.c 
+SRCS += server/lws_socket.c
+SRCS += server/lws_tool.c
 
 # object files
 OBJS = $(patsubst %.c, %.o, $(SRCS))
