@@ -299,8 +299,7 @@ lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size)
 
     plugin = &lws_http_plugins;
     while (plugin && plugin->uri) {
-        if (uri_size == plugin->uri_size &&
-            strncmp(plugin->uri, uri, uri_size) == 0) {
+        if (strncmp(plugin->uri, uri, plugin->uri_size) == 0) {
             hander = plugin->handler;
             break;
         }
@@ -421,7 +420,7 @@ int lws_http_conn_recv(lws_http_conn_t *lws_http_conn, char *data, size_t size)
         }
     } else {
         lws_log(2, "Not found uri: %.*s\n", http_msg.uri.len, http_msg.uri.p);
-        lws_http_respond_header(lws_http_conn, 404, lws_http_conn->close_flag);
+        lws_http_respond_header(lws_http_conn, HTTP_NOT_FOUND, lws_http_conn->close_flag);
     }
 
     return len;

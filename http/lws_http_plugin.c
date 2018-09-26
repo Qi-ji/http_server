@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "lws_log.h"
 #include "lws_http.h"
@@ -24,8 +27,7 @@ int lws_default_handler(lws_http_conn_t *c, int ev, void *p)
                   "<ul style=\"list-style-type:circle\">"
                   "<li><a href=\"/hello\"> echo hello message </a></li>"
                   "<li><a href=\"/version\"> echo lws version </a></li>"
-                  "<li><a href=\"/show.jpg\"> show picture </a></li>"
-                  "<li><a href=\"/binary.tgz\"> downlad file </a></li>"
+                  "<li><a href=\"/download\"> downlad file </a></li>"
                   "</ul>"
                   "</body></html>");
 
@@ -155,6 +157,125 @@ int lws_binary_handler(lws_http_conn_t *c, int ev, void *p)
         free(data);
     } else {
         return HTTP_BAD_REQUEST;
+    }
+
+    return HTTP_OK;
+}
+
+char *lws_contenttype(char *filename)
+{
+    unsigned int i;
+
+    /*
+    * If no content type was specified, we scan through a few well-known
+    * extensions and pick the first we match!
+    */
+    struct content_type_t {
+        char *extension;
+        char *type;
+    };
+
+    static struct content_type_t ctts[] = {
+        {".jpg",  LWS_HTTP_JPEG_TYPE},
+        {".jpeg", LWS_HTTP_JPEG_TYPE},
+        {".png",  LWS_HTTP_PNG_TYPE},
+        {".txt",  LWS_HTTP_PLAIN_TYPE},
+        {".htm",  LWS_HTTP_HTML_TYPE},
+        {".html", LWS_HTTP_HTML_TYPE},
+        {".pdf",  LWS_HTTP_PDF_TYPE},
+        {".xml",  LWS_HTTP_XML_TYPE},
+    };
+
+    if (filename) {
+        size_t len1 = strlen(filename);
+        char *nameend = filename + len1;
+
+        for(i = 0; i < sizeof ctts / sizeof ctts[0]; i++) {
+            size_t len2 = strlen(ctts[i].extension);
+
+            if (len1 >= len2 && strcasecmp(nameend - len2, ctts[i].extension) == 0) {
+                lws_log(4, "content type: %s\n", ctts[i].type);
+                return ctts[i].type;
+            }
+        }
+
+        return LWS_HTTP_OCTET_STREAM;
+    }
+
+    return NULL;
+}
+
+int lws_download_handler(lws_http_conn_t *c, int ev, void *p)
+{
+    struct http_message *hm = p;
+    char uri[1024] = {0};
+    char path[1024] = {0};
+    char *filename;
+    struct stat s_buf;
+    char *data = NULL;
+    long filesize = 0;
+    int rlen = 0;
+    DIR *dp = NULL;
+    struct dirent *dir;
+
+    if (hm == NULL || ev != LWS_EV_HTTP_REQUEST)
+        return HTTP_BAD_REQUEST;
+
+    if (hm->uri.len > 1024) {
+        lws_log(2, "Error, request size: %d\n", hm->uri.len);
+        return HTTP_BAD_REQUEST;
+    }
+
+    lws_log(4, "%.*s\n", hm->uri.len, hm->uri.p);
+    strncpy(uri, hm->uri.p, hm->uri.len);
+    filename = uri + strlen("/download");
+    if (filename == NULL)
+        sprintf(path, "./load");
+    else {
+        sprintf(path, "./load/%s", filename);
+    }
+
+    if (access(path, F_OK) != 0) {
+        lws_log(2, "path[%s] is not exist\n", path);
+        return HTTP_NOT_FOUND;
+    }
+
+    stat(path, &s_buf);
+    if (S_ISDIR(s_buf.st_mode)) {
+        lws_log(4, "show dir: %s\n", path);
+
+        data = malloc(4 * 1024);
+        rlen += sprintf(data + rlen, "<html><head><title>%s</title></head><body>", path);
+        rlen += sprintf(data + rlen, "<h1>Index of %s</h1>", path);
+        dp = opendir(path);
+        while ((dir = readdir(dp)) != NULL) {
+            if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
+                continue;
+
+            rlen += sprintf(data + rlen, "<a href=\"%s/%s\">%s</a></br>", uri, dir->d_name, dir->d_name);
+        }
+        closedir(dp);
+        rlen += sprintf(data + rlen, "</body></html>");
+        lws_log(4, "response: %.*s\n", rlen, data);
+        lws_http_respond(c, 200, c->close_flag, LWS_HTTP_HTML_TYPE, data, rlen);
+        free(data);
+    } else if (S_ISREG(s_buf.st_mode)) {
+        lws_log(4, "show file: %s\n", path);
+        filesize = lws_ftell_file(path);
+        if (filesize <= 0)
+            return HTTP_INTERNAL_SERVER_ERROR;
+
+        lws_log(4, "filesize: %d\n", filesize);
+        data = malloc(filesize);
+        rlen = lws_read_file(path, data, filesize);
+        if (rlen != filesize) {
+            lws_log(2, "rlen: %d\n", rlen);
+            free(data);
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        lws_http_respond(c, 200, c->close_flag, lws_contenttype(path), data, rlen);
+        free(data);
     }
 
     return HTTP_OK;
