@@ -365,6 +365,7 @@ char *lws_http_contenttype(char *filename)
         {".jpg",  LWS_HTTP_JPEG_TYPE},
         {".jpeg", LWS_HTTP_JPEG_TYPE},
         {".png",  LWS_HTTP_PNG_TYPE},
+        {".gif",  LWS_HTTP_GIF_TYPE},
         {".txt",  LWS_HTTP_PLAIN_TYPE},
         {".htm",  LWS_HTTP_HTML_TYPE},
         {".html", LWS_HTTP_HTML_TYPE},

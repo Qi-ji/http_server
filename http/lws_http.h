@@ -23,6 +23,7 @@
 #define LWS_HTTP_JPEG_TYPE      "image/jpeg"
 #define LWS_HTTP_BMP_TYPE       "image/bmp"
 #define LWS_HTTP_PNG_TYPE       "image/png"
+#define LWS_HTTP_GIF_TYPE       "image/gif"
 #define LWS_HTTP_MPEG_TYPE      "video/mpeg"
 #define LWS_HTTP_MP4_TYPE       "video/mp4"
 
