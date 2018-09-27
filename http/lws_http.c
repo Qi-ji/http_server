@@ -293,13 +293,20 @@ lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size)
 {
     lws_http_plugins_t *plugin;
     lws_event_handler_t hander = NULL;
+    char *start = NULL;
 
     if (uri == NULL || uri_size <= 0)
         return NULL;
 
+    start = strchr(uri + 1/* skip one / */, '/');
+    if (start != NULL && start - uri < uri_size) {
+        uri_size = start - uri;
+    }
+
     plugin = &lws_http_plugins;
     while (plugin && plugin->uri) {
-        if (strncmp(plugin->uri, uri, plugin->uri_size) == 0) {
+        if (uri_size == plugin->uri_size &&
+            strncmp(plugin->uri, uri, uri_size) == 0) {
             hander = plugin->handler;
             break;
         }

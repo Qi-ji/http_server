@@ -265,13 +265,13 @@ static void *lws_accept_thread(void *arg)
  */
 int lws_service_init(void)
 {
-    /* load file */
-    lws_http_endpoint_register("/download", 9, lws_download_handler);
-
     /* http endpoint */
+    lws_http_endpoint_register("/", 1, lws_default_handler);
     lws_http_endpoint_register("/hello", 6, lws_hello_handler);
     lws_http_endpoint_register("/version", 8, lws_version_handler);
-    lws_http_endpoint_register("/", 1, lws_default_handler);
+
+    /* load file */
+    lws_http_endpoint_register("/download", 9, lws_download_handler);
 
     return 0;
 }
