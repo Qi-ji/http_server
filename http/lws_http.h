@@ -159,6 +159,7 @@ typedef struct lws_http_plugins_t {
 
 extern lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size);
 extern void lws_http_endpoint_register(const char *uri, int uri_size, lws_event_handler_t handler);
+extern char *lws_http_contenttype(char *filename);
 
 #endif // _LWS_HTTP_H_
 

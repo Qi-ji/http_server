@@ -162,49 +162,6 @@ int lws_binary_handler(lws_http_conn_t *c, int ev, void *p)
     return HTTP_OK;
 }
 
-char *lws_contenttype(char *filename)
-{
-    unsigned int i;
-
-    /*
-    * If no content type was specified, we scan through a few well-known
-    * extensions and pick the first we match!
-    */
-    struct content_type_t {
-        char *extension;
-        char *type;
-    };
-
-    static struct content_type_t ctts[] = {
-        {".jpg",  LWS_HTTP_JPEG_TYPE},
-        {".jpeg", LWS_HTTP_JPEG_TYPE},
-        {".png",  LWS_HTTP_PNG_TYPE},
-        {".txt",  LWS_HTTP_PLAIN_TYPE},
-        {".htm",  LWS_HTTP_HTML_TYPE},
-        {".html", LWS_HTTP_HTML_TYPE},
-        {".pdf",  LWS_HTTP_PDF_TYPE},
-        {".xml",  LWS_HTTP_XML_TYPE},
-    };
-
-    if (filename) {
-        size_t len1 = strlen(filename);
-        char *nameend = filename + len1;
-
-        for(i = 0; i < sizeof ctts / sizeof ctts[0]; i++) {
-            size_t len2 = strlen(ctts[i].extension);
-
-            if (len1 >= len2 && strcasecmp(nameend - len2, ctts[i].extension) == 0) {
-                lws_log(4, "content type: %s\n", ctts[i].type);
-                return ctts[i].type;
-            }
-        }
-
-        return LWS_HTTP_OCTET_STREAM;
-    }
-
-    return NULL;
-}
-
 int lws_download_handler(lws_http_conn_t *c, int ev, void *p)
 {
     struct http_message *hm = p;
@@ -274,7 +231,7 @@ int lws_download_handler(lws_http_conn_t *c, int ev, void *p)
             return HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        lws_http_respond(c, 200, c->close_flag, lws_contenttype(path), data, rlen);
+        lws_http_respond(c, 200, c->close_flag, lws_http_contenttype(path), data, rlen);
         free(data);
     }
 

@@ -57,6 +57,9 @@ static lws_http_status_t lws_http_status[] = {
     {HTTP_HTTP_VERSION_NOT_SUPPORTED,       "HTTPVersionNotSupported"},
 };
 
+/* http plugin */
+static lws_http_plugins_t lws_http_plugins = {NULL, NULL, 0, NULL};
+
 const char *lws_skip(const char *s, const char *end, const char *delims, struct lws_str *v)
 {
     v->p = s;
@@ -287,28 +290,22 @@ int lws_http_respond_header(lws_http_conn_t *lws_http_conn, int http_code, int c
 /**
  * http plugin interfaces
 **/
-static lws_http_plugins_t lws_http_plugins = {NULL, NULL, 0, NULL};
-
 lws_event_handler_t lws_http_get_endpoint_hander(const char *uri, int uri_size)
 {
     lws_http_plugins_t *plugin;
     lws_event_handler_t hander = NULL;
-    char *start = NULL;
+    int max_size = 0;
 
     if (uri == NULL || uri_size <= 0)
         return NULL;
 
-    start = strchr(uri + 1/* skip one / */, '/');
-    if (start != NULL && start - uri < uri_size) {
-        uri_size = start - uri;
-    }
-
     plugin = &lws_http_plugins;
     while (plugin && plugin->uri) {
-        if (uri_size == plugin->uri_size &&
-            strncmp(plugin->uri, uri, uri_size) == 0) {
-            hander = plugin->handler;
-            break;
+        if (strncmp(plugin->uri, uri, plugin->uri_size) == 0) {
+            if (plugin->uri_size > max_size) {
+                max_size = plugin->uri_size;
+                hander = plugin->handler;
+            }
         }
 
         plugin = plugin->next;
@@ -349,6 +346,49 @@ void lws_http_endpoint_register(const char *uri, int uri_size, lws_event_handler
         new_plugin->next = NULL;
         lws_log(3, "register endpoint: %.*s\n", uri_size, uri);
     }
+}
+
+char *lws_http_contenttype(char *filename)
+{
+    unsigned int i;
+
+    /*
+    * If no content type was specified, we scan through a few well-known
+    * extensions and pick the first we match!
+    */
+    struct content_type_t {
+        char *extension;
+        char *type;
+    };
+
+    static struct content_type_t ctts[] = {
+        {".jpg",  LWS_HTTP_JPEG_TYPE},
+        {".jpeg", LWS_HTTP_JPEG_TYPE},
+        {".png",  LWS_HTTP_PNG_TYPE},
+        {".txt",  LWS_HTTP_PLAIN_TYPE},
+        {".htm",  LWS_HTTP_HTML_TYPE},
+        {".html", LWS_HTTP_HTML_TYPE},
+        {".pdf",  LWS_HTTP_PDF_TYPE},
+        {".xml",  LWS_HTTP_XML_TYPE},
+    };
+
+    if (filename) {
+        size_t len1 = strlen(filename);
+        char *nameend = filename + len1;
+
+        for(i = 0; i < sizeof ctts / sizeof ctts[0]; i++) {
+            size_t len2 = strlen(ctts[i].extension);
+
+            if (len1 >= len2 && strcasecmp(nameend - len2, ctts[i].extension) == 0) {
+                lws_log(4, "content type: %s\n", ctts[i].type);
+                return ctts[i].type;
+            }
+        }
+
+        return LWS_HTTP_OCTET_STREAM;
+    }
+
+    return NULL;
 }
 
 /**
