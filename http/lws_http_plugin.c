@@ -189,7 +189,7 @@ int lws_download_handler(lws_http_conn_t *c, int ev, void *p)
     if (filename == NULL)
         sprintf(path, "./load");
     else {
-        sprintf(path, "./load/%s", filename);
+        sprintf(path, "./load%s", filename);
     }
 
     if (access(path, F_OK) != 0) {
@@ -209,7 +209,11 @@ int lws_download_handler(lws_http_conn_t *c, int ev, void *p)
             if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
                 continue;
 
-            rlen += sprintf(data + rlen, "<a href=\"%s/%s\">%s</a></br>", uri, dir->d_name, dir->d_name);
+            if (dir->d_type == DT_DIR) {
+                rlen += sprintf(data + rlen, "<a href=\"%s/%s\">./%s</a></br>", uri, dir->d_name, dir->d_name);
+            } else {
+                rlen += sprintf(data + rlen, "<a href=\"%s/%s\">%s</a></br>", uri, dir->d_name, dir->d_name);
+            }
         }
         closedir(dp);
         rlen += sprintf(data + rlen, "</body></html>");
